@@ -1,78 +1,164 @@
 # Best Time to Buy and Sell Stock
 
-## Core Idea
+## 1. Problem
 
-The goal is to maximize:
+Given an array `prices` where `prices[i]` represents the stock price on day `i`, find the maximum profit that can be achieved by:
 
-`selling price - buying price`
+- Buying on one day.
+- Selling on a **later** day.
 
-with the constraint that the **buying day must come before the selling day**.
-
-The important observation is:
-
-> For any given selling day, we only care about the cheapest price that appeared before that day.
-
-There is no reason to compare the current selling price against every previous price.
+If no profitable transaction exists, return `0`.
 
 ---
 
-## Why the Brute-Force Approach Works but Is Not Good Enough
+## 2. Core Insight
 
-The obvious approach is to consider every possible pair of days:
+For a fixed selling day `i`, the profit is:
 
-- Choose a buying day.
-- Choose every later selling day.
-- Calculate the profit.
-- Keep the maximum.
+```text
+profit = prices[i] - buying_price
+```
 
-This correctly considers every valid transaction, but it takes:
+To maximize this profit, we want the **smallest buying price among all previous days**.
 
-**Time:** `O(n²)`
+Therefore, while traversing the array from left to right, we only need to maintain:
 
-For large arrays, the number of comparisons becomes enormous, which can result in **Time Limit Exceeded**.
+- `minPrice` — the lowest price seen so far.
+- `maxProfit` — the highest profit found so far.
 
-The key problem is that we repeatedly perform work that isn't necessary.
-
----
-
-## The Key Observation
-
-Suppose the current price is:
-
-`prices[i]`
-
-To get the maximum profit if we sell today, we want:
-
-`prices[i] - minimum previous price`
-
-We don't need to know every previous price.
-
-We only need to remember:
-
-- The **minimum price seen so far**
-- The **maximum profit found so far**
-
-This reduces the problem from checking every pair to processing each price exactly once.
+We do **not** need to remember every previous price.
 
 ---
 
-## Why This Guarantees the Correct Answer
+## 3. Why Brute Force Is Not Enough
 
-At every index `i`:
+The straightforward approach is to consider every valid pair of days:
 
-1. We know the minimum price among the days we've already encountered.
-2. That minimum price represents the best possible buying price for selling on day `i`.
-3. We calculate the best possible profit for selling today.
-4. We compare it with the best profit we've found previously.
-5. We continue to the next day.
+```text
+buy day < sell day
+```
 
-Because we scan from left to right, the minimum price we're using always comes from a day **before or at the current day**.
+This requires checking approximately:
 
-Therefore, the buy-before-sell constraint is automatically respected.
+```text
+n(n - 1) / 2
+```
+
+pairs.
+
+### Complexity
+
+```text
+Time:  O(n²)
+Space: O(1)
+```
+
+Although this approach is logically correct, it becomes too slow for large input arrays and can result in **Time Limit Exceeded**.
+
+The problem is repeated work: for every selling day, we repeatedly examine all previous prices.
 
 ---
 
-## Why We Don't Just Find the Global Minimum
+## 4. Optimal Approach
+
+Process the array once from left to right.
+
+Maintain two values:
+
+| Variable | Meaning |
+|---|---|
+| `minPrice` | Lowest price encountered so far |
+| `maxProfit` | Highest valid profit encountered so far |
+
+For every price:
+
+1. Update `minPrice` if the current price is smaller.
+2. Calculate the profit obtained by selling at the current price using `minPrice`.
+3. Update `maxProfit` if this profit is larger.
+
+The implementation is stored separately in the solution file. The important part to remember is the state being maintained.
+
+---
+
+## 5. Why It Works
+
+Consider a selling day `i`.
+
+Every possible buying day before `i` produces:
+
+```text
+prices[i] - prices[k]
+```
+
+To maximize this expression, we need the smallest possible `prices[k]`.
+
+Therefore:
+
+```text
+best profit for day i
+=
+prices[i] - minimum previous price
+```
+
+Instead of searching for that minimum repeatedly, we maintain it as we traverse the array.
+
+This means every selling day can be evaluated in `O(1)` time.
+
+---
+
+## 6. The Ordering Constraint
+
+The problem requires:
+
+```text
+buy day < sell day
+```
+
+The left-to-right traversal handles this automatically.
+
+When processing `prices[i]`, `minPrice` represents a price encountered earlier in the traversal.
+
+Therefore, the algorithm never accidentally chooses a buying day after the selling day.
+
+This is an important reason why the traversal direction matters.
+
+---
+
+## 7. Example
+
+Consider:
+
+```text
+prices = [7, 1, 5, 3, 6, 4]
+```
+
+Track the state as we traverse:
+
+| Day | Price | Minimum Price So Far | Profit If Sold Today | Maximum Profit |
+|---:|---:|---:|---:|---:|
+| 0 | 7 | 7 | 0 | 0 |
+| 1 | 1 | 1 | 0 | 0 |
+| 2 | 5 | 1 | 4 | 4 |
+| 3 | 3 | 1 | 2 | 4 |
+| 4 | 6 | 1 | 5 | 5 |
+| 5 | 4 | 1 | 3 | 5 |
+
+The maximum profit is:
+
+```text
+5
+```
+
+achieved by:
+
+```text
+Buy at 1
+Sell at 6
+```
+
+---
+
+## 8. Why We Cannot Simply Find the Global Minimum
 
 A tempting approach is:
 
@@ -80,121 +166,121 @@ A tempting approach is:
 2. Find the largest price after it.
 3. Calculate the profit.
 
-This doesn't always work because the global minimum might occur too late.
+This fails because the global minimum may occur too late.
 
 Example:
 
-`[2, 10, 1, 3]`
+```text
+[2, 10, 1, 3]
+```
 
-The global minimum is `1`, but the best transaction is:
+The global minimum is `1`, but it appears after the best selling opportunity.
 
-`2 → 10`
+The optimal transaction is:
 
-with a profit of `8`.
+```text
+Buy at 2
+Sell at 10
+Profit = 8
+```
 
-Therefore, we need to preserve the best profit found **before** a new minimum appears.
-
----
-
-## State We Actually Need
-
-Only two pieces of information are necessary:
-
-### `minPrice`
-
-The lowest price encountered so far.
-
-### `maxProfit`
-
-The highest valid profit encountered so far.
-
-Everything else from the previous days can be discarded.
-
-This is why the solution uses constant extra space.
+Therefore, we need to continuously track the best opportunity seen so far rather than committing to one global minimum.
 
 ---
 
-## Why This Is the Best Approach
+## 9. Important Edge Case
 
-The problem requires examining the prices because any day could potentially be the best buying or selling day.
+Consider a completely decreasing array:
 
-A single left-to-right traversal is sufficient.
+```text
+[7, 6, 5, 4, 3, 2, 1]
+```
 
-Therefore:
+Every possible transaction results in a loss.
 
-**Time:** `O(n)`
+Since making no transaction is allowed, the answer is:
 
-**Space:** `O(1)`
+```text
+0
+```
 
-You cannot asymptotically improve the time below `O(n)` because you need to inspect the input to know whether a better opportunity exists.
-
-So `O(n)` time and `O(1)` extra space is optimal.
-
----
-
-## Example
-
-For:
-
-`[7, 1, 5, 3, 6, 4]`
-
-The important state evolves like this:
-
-| Price | Minimum Seen | Best Profit |
-|---:|---:|---:|
-| 7 | 7 | 0 |
-| 1 | 1 | 0 |
-| 5 | 1 | 4 |
-| 3 | 1 | 4 |
-| 6 | 1 | 5 |
-| 4 | 1 | 5 |
-
-The answer is `5`.
-
-The transaction is:
-
-`Buy at 1 → Sell at 6`
+This is why `maxProfit` starts at `0`.
 
 ---
 
-## Important Edge Case
+## 10. Complexity
 
-For a decreasing array:
+### Time
 
-`[7, 6, 5, 4, 3, 2, 1]`
+```text
+O(n)
+```
 
-every possible transaction loses money.
+The array is traversed exactly once.
 
-Therefore the maximum profit remains:
+### Space
 
-`0`
+```text
+O(1)
+```
 
-This correctly represents the fact that the best decision is to make no transaction.
+Only a constant number of variables are maintained regardless of the input size.
 
 ---
 
-## What I Should Remember
+## 11. Why This Is Optimal
 
-### Pattern
+An `O(n)` solution is asymptotically optimal.
 
-When repeatedly calculating:
+The algorithm must inspect the prices because any element could potentially be:
 
-`current value - previous value`
+- The minimum buying price.
+- The maximum selling price.
+- Part of the optimal transaction.
 
-ask:
+Therefore, we cannot generally solve the problem in less than `O(n)` time.
 
-> "Which property of all previous values actually matters?"
+The final complexity is:
 
-Here, only the **minimum previous value** matters.
+```text
+Time:  O(n)
+Space: O(1)
+```
 
-### General Optimization Pattern
+---
 
-Instead of storing or repeatedly searching the entire history:
+## 12. Key Learning
 
-`Entire history → useful summary → constant-size state`
+The most important lesson is **not** the specific code.
 
-This is a useful pattern far beyond this particular problem.
+The important reasoning pattern is:
 
-### Final Insight
+> When repeatedly comparing the current value against every previous value, ask whether all previous values can be represented by a smaller summary.
 
-> **For every possible selling day, the only previous information that matters is the cheapest price seen so far.**
+Here:
+
+```text
+All previous prices
+        ↓
+Only the minimum previous price matters
+        ↓
+Maintain that minimum
+        ↓
+One pass through the array
+        ↓
+O(n) time, O(1) space
+```
+
+### Pattern to Remember
+
+When a problem repeatedly asks for the best result involving the current element and **any previous element**, look for a property of the previous elements that can be maintained incrementally.
+
+Common examples include:
+
+- Minimum so far
+- Maximum so far
+- Prefix sum
+- Frequency/count
+- Running state
+
+The goal is to replace repeated searching with a **running summary of the past**.
