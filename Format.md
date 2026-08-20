@@ -172,7 +172,7 @@ When a problem has multiple approaches, document each approach separately.
 Example:
 
 ```text
-Product of Array Except Self (#238)
+238 Product of Array Except Self
 │
 ├── Brute Force Approach.Cpp
 ├── Brute Force Approach.md
