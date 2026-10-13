@@ -12,5 +12,5 @@ public:
             right++;
         }
         return max;
-    }
+    } 
 };
